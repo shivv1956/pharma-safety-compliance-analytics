@@ -1,0 +1,12 @@
+[project]
+name = "pharma-safety-compliance-analytics"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "dbt>=2.0.6",
+    "dbt-snowflake>=1.12.1",
+    "dlt[snowflake]>=1.30.0",
+    "tqdm>=4.70.1",
+]

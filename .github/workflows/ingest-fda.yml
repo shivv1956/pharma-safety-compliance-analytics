@@ -1,0 +1,34 @@
+name: Ingest openFDA (daily)
+
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily, 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: ingest-openfda # never run two loads against the same dlt state
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      # dlt keeps its incremental cursors in Snowflake (_dlt_pipeline_state),
+      # so a fresh runner resumes where the last run stopped.
+      - name: Run openFDA pipeline
+        working-directory: ingestion
+        run: uv run python fda_pipeline.py
+        env:
+          DESTINATION__SNOWFLAKE__CREDENTIALS__HOST: ${{ secrets.SNOWFLAKE_HOST }}
+          DESTINATION__SNOWFLAKE__CREDENTIALS__USERNAME: ${{ secrets.SNOWFLAKE_USER }}
+          DESTINATION__SNOWFLAKE__CREDENTIALS__PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+          DESTINATION__SNOWFLAKE__CREDENTIALS__WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          DESTINATION__SNOWFLAKE__CREDENTIALS__ROLE: INGEST_ROLE
+          DESTINATION__SNOWFLAKE__CREDENTIALS__DATABASE: PHARMA_SOURCE
+          SOURCES__FDA_PIPELINE__API_KEY: ${{ secrets.OPENFDA_API_KEY }}
