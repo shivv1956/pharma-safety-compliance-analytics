@@ -34,10 +34,16 @@ def open_payments_source(
     """
     Args:
         program_year: Open Payments program year to pull.
-        max_rows: cap on rows per run (None = the whole filtered year,
+        max_rows: cap on rows per run (None or 0 = the whole filtered year,
             several million rows).
     """
+    if program_year not in GENERAL_PAYMENT_DATASETS:
+        raise ValueError(f"program_year must be one of {sorted(GENERAL_PAYMENT_DATASETS)}")
     dataset_id = GENERAL_PAYMENT_DATASETS[program_year]
+
+    def tag_program_year(row: dict) -> dict:
+        row["program_year"] = program_year
+        return row
 
     config: RESTAPIConfig = {
         # the CMS Akamai gateway returns 403 for unfamiliar User-Agents (dlt/x.y, custom, browser)
@@ -45,9 +51,11 @@ def open_payments_source(
         "resources": [
             {
                 "name": "general_payments",
-                "primary_key": "record_id",
-                # the year is republished/corrected as a whole, so upsert on record_id
+                # record_id is only guaranteed unique within one program year
+                "primary_key": ["program_year", "record_id"],
+                # the year is republished/corrected as a whole, so upsert on the key
                 "write_disposition": "merge",
+                "processing_steps": [{"map": tag_program_year}],
                 "endpoint": {
                     "path": f"datastore/query/{dataset_id}/0",
                     "data_selector": "results",
@@ -75,14 +83,14 @@ def open_payments_source(
     yield from resources
 
 
-def load_payments(max_rows: Optional[int] = 100_000) -> None:
+def load_payments(program_year: int = 2024, max_rows: Optional[int] = 100_000) -> None:
     pipeline = dlt.pipeline(
         pipeline_name="cms_open_payments",
         destination="snowflake",
         dataset_name="cms_open_payments",
         progress=PROGRESS,
     )
-    load_info = pipeline.run(open_payments_source(max_rows=max_rows))
+    load_info = pipeline.run(open_payments_source(program_year=program_year, max_rows=max_rows))
     print(load_info)  # noqa: T201
 
 
@@ -90,5 +98,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--max-rows", type=int, default=100_000, help="row cap for this run")
-    load_payments(parser.parse_args().max_rows)
+    parser.add_argument("--year", type=int, default=2024, help="Open Payments program year")
+    parser.add_argument("--max-rows", type=int, default=100_000, help="row cap for this run (0 = no cap)")
+    args = parser.parse_args()
+    load_payments(args.year, args.max_rows)
