@@ -1,13 +1,19 @@
-name: Ingest CMS Open Payments (monthly)
+name: Ingest CMS Open Payments (bulk CSV)
 
 on:
   schedule:
     - cron: "0 7 1 * *" # 1st of every month, 07:00 UTC
   workflow_dispatch:
     inputs:
+      program_year:
+        description: Override the CMS_PAYMENTS_YEAR variable for this run (blank = use the variable)
+        default: ""
       max_rows:
-        description: Row cap for this run (0 = the whole filtered year)
-        default: "100000"
+        description: Stop after this many rows (0 = the whole year; use a small number to test)
+        default: "0"
+      skip_rows:
+        description: Resume an interrupted load, skipping this many already-loaded rows (see the "loaded N rows" log lines)
+        default: "0"
 
 concurrency:
   group: ingest-cms
@@ -17,16 +23,20 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     environment: ingestion
-    timeout-minutes: 300
+    timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
       - run: uv sync --frozen
-      - name: Run payments pipeline
+      - name: Stream and load the yearly CSV
         working-directory: ingestion
-        run: uv run python payments_pipeline.py --max-rows "${{ inputs.max_rows || '100000' }}"
+        run: >
+          uv run python payments_bulk_pipeline.py
+          --year "${{ inputs.program_year || vars.CMS_PAYMENTS_YEAR || '2025' }}"
+          --max-rows "${{ inputs.max_rows || '0' }}"
+          --skip-rows "${{ inputs.skip_rows || '0' }}"
         env:
           DESTINATION__SNOWFLAKE__CREDENTIALS__HOST: ${{ secrets.SNOWFLAKE_HOST }}
           DESTINATION__SNOWFLAKE__CREDENTIALS__USERNAME: ${{ secrets.SNOWFLAKE_USER }}
