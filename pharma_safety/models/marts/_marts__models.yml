@@ -1,0 +1,156 @@
+version: 2
+
+models:
+  - name: dim_manufacturers
+    description: One row per conformed manufacturer, with subsidiaries and divisions rolled up to the parent (see int_manufacturer_resolution).
+    columns:
+      - name: manufacturer_key
+        data_tests: [unique, not_null]
+      - name: manufacturer_name
+        data_tests: [not_null]
+
+  - name: dim_drugs
+    description: One row per conformed drug (active ingredient); brand names roll up to their generic (see int_drug_resolution).
+    columns:
+      - name: drug_key
+        data_tests: [unique, not_null]
+      - name: generic_name
+        data_tests: [not_null]
+
+  - name: dim_physicians
+    description: One row per physician (CMS profile id), with attributes from the latest payment.
+    columns:
+      - name: physician_key
+        data_tests: [unique, not_null]
+
+  - name: dim_date
+    description: Calendar dimension, one row per day from 2020-01-01 to 2030-12-31.
+    columns:
+      - name: date_key
+        description: YYYYMMDD.
+        data_tests: [unique, not_null]
+      - name: date_day
+        data_tests: [unique, not_null]
+
+  - name: fct_payments
+    description: One row per CMS general payment to a physician. `drug_key` is the payment's primary (first) product.
+    columns:
+      - name: payment_id
+        data_tests: [unique, not_null]
+      - name: physician_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_physicians'), field: physician_key}
+      - name: manufacturer_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_manufacturers'), field: manufacturer_key}
+      - name: drug_key
+        description: Null for the ~0.08% of payments that list no product name.
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_drugs'), field: drug_key}
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+      - name: payment_amount_usd
+        data_tests: [not_null]
+
+  - name: fct_recalls
+    description: One row per classified drug recall. Updated in place when a recall's status changes.
+    columns:
+      - name: recall_number
+        data_tests: [unique, not_null]
+      - name: manufacturer_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_manufacturers'), field: manufacturer_key}
+      - name: drug_key
+        description: Null when the recall's drug name could not be determined.
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_drugs'), field: drug_key}
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+      - name: recall_classification
+        data_tests:
+          - accepted_values:
+              arguments: {values: ['Class I', 'Class II', 'Class III']}
+
+  - name: fct_adverse_events
+    description: >
+      One row per (FAERS report, drug). Report-level flags repeat on each drug row, so count
+      reports with count(distinct adverse_event_report_id) and filter on is_suspect for the
+      drugs a reporter blamed.
+    columns:
+      - name: adverse_event_drug_id
+        data_tests: [unique, not_null]
+      - name: adverse_event_report_id
+        data_tests: [not_null]
+      - name: drug_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_drugs'), field: drug_key}
+      - name: manufacturer_key
+        description: Null for drug rows openFDA could not match to a manufacturer (~17%).
+        data_tests:
+          - relationships:
+              arguments: {to: ref('dim_manufacturers'), field: manufacturer_key}
+      - name: date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_date'), field: date_key}
+
+  - name: mart_manufacturer_payment_concentration
+    description: >
+      How concentrated each manufacturer's physician payments are, per program year.
+      top_decile_share is the share going to the top 10% of paid physicians.
+    columns:
+      - name: manufacturer_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_manufacturers'), field: manufacturer_key}
+      - name: top_decile_share
+        data_tests:
+          - not_null
+
+  - name: mart_manufacturer_monthly
+    description: Reporting table for Power BI. One row per manufacturer and month with payments, suspect-drug adverse-event reports and recalls side by side.
+    columns:
+      - name: manufacturer_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('dim_manufacturers'), field: manufacturer_key}
+      - name: month_start
+        data_tests: [not_null]
+
+  - name: mart_compliance_risk_signals
+    description: >
+      The rules behind the compliance agent: one row per manufacturer that paid physicians in
+      `analysis_year`, with four signals (concentrated payments, material spend, rising serious
+      events, a Class I recall). alert_level is 'critical' when all four fire and 'watch' when
+      three do. Thresholds are dbt vars.
+    columns:
+      - name: manufacturer_key
+        data_tests: [unique, not_null]
+      - name: signals_met
+        data_tests:
+          - accepted_values:
+              arguments: {values: [0, 1, 2, 3, 4], quote: false}
+      - name: alert_level
+        description: critical, watch, or null (no alert).
+        data_tests:
+          - accepted_values:
+              arguments: {values: ['critical', 'watch']}

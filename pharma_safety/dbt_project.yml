@@ -32,5 +32,23 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   pharma_safety:
     # Config indicated by + and applies to all files under models/example/
-    example:
+    staging:
       +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts
+seeds:
+  pharma_safety:
+    +schema: reference
+
+# Thresholds for mart_compliance_risk_signals (the rules behind the compliance agent).
+vars:
+  analysis_year: 2025               # payments program year; events and recalls use the same calendar year
+  concentration_percentile: 0.75    # concentrated = top-decile payment share in the top quartile of material payers
+  min_payments_usd: 1000000         # ignore manufacturers paying less than this in the year
+  rising_ratio: 1.2                 # serious reports in H2 vs H1 of the year
+  min_h2_serious_reports: 100       # ...and at least this many in H2, so tiny counts do not trigger
