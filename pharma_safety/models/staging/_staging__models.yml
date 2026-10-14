@@ -1,0 +1,98 @@
+version: 2
+
+models:
+  - name: stg_adverse_events
+    description: One row per FAERS safety report (latest load wins if a report was loaded twice). Flags are cast to booleans, dates to DATE.
+    columns:
+      - name: adverse_event_report_id
+        description: openFDA `safetyreportid`.
+        data_tests:
+          - unique
+          - not_null
+      - name: received_date
+        description: Date FDA received the report (the incremental cursor of the ingestion).
+        data_tests:
+          - not_null
+      - name: is_serious
+        description: True when the report is flagged serious. Null when the source omitted the flag.
+
+  - name: stg_adverse_event_drugs
+    description: One row per drug on a FAERS report. Drug names are as reported (not yet conformed).
+    columns:
+      - name: adverse_event_drug_id
+        description: dlt row id of the drug entry.
+        data_tests:
+          - unique
+          - not_null
+      - name: adverse_event_report_id
+        description: Parent report.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_adverse_events')
+                field: adverse_event_report_id
+      - name: drug_role
+        description: suspect, concomitant or interacting.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['suspect', 'concomitant', 'interacting']
+
+  - name: stg_adverse_event_reactions
+    description: One row per reaction on a FAERS report (MedDRA preferred term).
+    columns:
+      - name: adverse_event_reaction_id
+        description: dlt row id of the reaction entry.
+        data_tests:
+          - unique
+          - not_null
+      - name: adverse_event_report_id
+        description: Parent report.
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_adverse_events')
+                field: adverse_event_report_id
+
+  - name: stg_recalls
+    description: One row per classified drug recall (deduplicated on recall_number). Recalls FDA has not yet classified have no recall number and are excluded.
+    columns:
+      - name: recall_number
+        description: openFDA recall number, the primary key.
+        data_tests:
+          - unique
+          - not_null
+      - name: recall_classification
+        description: Class I (most severe) to Class III (least severe).
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Class I', 'Class II', 'Class III']
+      - name: report_date
+        description: Date the recall was reported (the incremental cursor of the ingestion).
+        data_tests:
+          - not_null
+
+  - name: stg_open_payments
+    description: One row per CMS Open Payments general payment to a physician tied to a drug.
+    columns:
+      - name: payment_id
+        description: "`program_year`-`record_id`; record_id is only unique within a program year."
+        data_tests:
+          - unique
+          - not_null
+      - name: payment_amount_usd
+        description: Total payment amount in USD.
+        data_tests:
+          - not_null
+      - name: payment_date
+        description: Date of the payment.
+        data_tests:
+          - not_null
+      - name: manufacturer_name
+        description: Manufacturer as reported by CMS (not yet conformed).
+        data_tests:
+          - not_null

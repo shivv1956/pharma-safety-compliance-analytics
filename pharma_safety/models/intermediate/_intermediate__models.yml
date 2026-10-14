@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: int_manufacturer_names
+    description: Every distinct manufacturer / firm name in payments, recalls and adverse events, with its occurrence count and rule-based comparison key. One row per (source_system, raw_name).
+    columns:
+      - name: source_system
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['payments', 'recalls', 'adverse_events']
+      - name: raw_name
+        data_tests:
+          - not_null
+      - name: name_key
+        description: Output of `normalize_firm_name` (parent rolled up, suffixes stripped).
+        data_tests:
+          - not_null
+
+  - name: int_manufacturer_resolution
+    description: >
+      Maps every raw manufacturer name in every source to one conformed manufacturer, with
+      subsidiaries and divisions rolled up to the parent. Feeds `dim_manufacturers`.
+      Rows with a `review_candidate_key` are near-matches that were NOT merged and need a
+      human decision (confirm by adding a row to the `manufacturer_aliases` seed).
+    columns:
+      - name: manufacturer_key
+        description: md5 of `manufacturer_match_key`; the conformed manufacturer id.
+        data_tests:
+          - not_null
+      - name: manufacturer_name
+        description: Display name (payments spelling preferred, then recalls, then events).
+        data_tests:
+          - not_null
+      - name: match_method
+        description: How the name was resolved - rule, alias (seed) or fuzzy.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['rule', 'alias', 'fuzzy']
+
+  - name: int_drug_names
+    description: Every distinct drug name in payments (product slots 1-5), adverse events (as reported) and recalls, with occurrence count and comparison key. One row per (source_system, raw_name).
+    columns:
+      - name: source_system
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['payments', 'recalls', 'adverse_events']
+      - name: raw_name
+        data_tests:
+          - not_null
+      - name: name_key
+        description: Output of `normalize_drug_name` (strengths, dosage forms and salts removed).
+        data_tests:
+          - not_null
+
+  - name: int_drug_dictionary
+    description: Name -> generic (active ingredient) dictionary learned from openFDA-enriched adverse-event rows and recalls, falling back to the reporter's active-substance field. One row per name_key; the most frequent generic wins.
+    columns:
+      - name: name_key
+        data_tests:
+          - unique
+          - not_null
+      - name: generic_key
+        data_tests:
+          - not_null
+
+  - name: int_drug_resolution
+    description: >
+      Maps every raw drug name in every source to one conformed drug (active ingredient), so
+      brand names roll up to their generic. Feeds `dim_drugs`. Conforming at ingredient level
+      means brands of one ingredient (Ozempic, Wegovy, Rybelsus) share a `drug_key`.
+    columns:
+      - name: drug_key
+        description: md5 of `drug_match_key`; the conformed drug id.
+        data_tests:
+          - not_null
+      - name: generic_name
+        description: Normalized generic (active ingredient) name; the same value for every row of a drug_key.
+        data_tests:
+          - not_null
+      - name: match_method
+        description: dictionary (known name), generic (name is itself a known generic) or name (nothing known; stands for itself).
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['dictionary', 'generic', 'name']
