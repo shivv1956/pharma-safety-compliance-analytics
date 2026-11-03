@@ -1,0 +1,63 @@
+name: dbt CI
+
+on:
+  pull_request:
+    paths: ["pharma_safety/**", "ci/**", "pyproject.toml", "uv.lock", ".github/workflows/dbt-*.yml"]
+
+concurrency:
+  group: dbt-ci # PRs share the PHARMA_TEST database, so run one at a time
+  cancel-in-progress: false
+
+env:
+  DBT_PROFILES_DIR: ${{ github.workspace }}/ci
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+  DBT_DATABASE: ${{ vars.DBT_CI_DATABASE || 'PHARMA_TEST' }}
+  DBT_SCHEMA: ci
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: dbt
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run dbt deps
+        working-directory: pharma_safety
+      - name: Parse (catches broken refs and YAML without touching Snowflake)
+        run: uv run dbt parse
+        working-directory: pharma_safety
+
+      # Slim CI: compare against the manifest the last production build uploaded and build
+      # only what changed, resolving unchanged upstream models from production (deferral).
+      - name: Fetch production manifest
+        id: state
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --workflow dbt-deploy.yml --branch main --status success --limit 1 --json databaseId --jq '.[0].databaseId')
+          test -n "$run_id"
+          gh run download "$run_id" --name dbt-prod-state --dir prod-state
+      - name: Build modified models and their children
+        if: steps.state.outcome == 'success'
+        run: >
+          uv run dbt build --select "state:modified+" --exclude "package:dbt_project_evaluator"
+          --defer --state ../prod-state --favor-state
+        working-directory: pharma_safety
+      - name: No production state yet
+        if: steps.state.outcome != 'success'
+        run: echo "::warning::No production manifest found (run dbt-deploy on main first); only parsed."
+
+      - name: Project health (dbt_project_evaluator)
+        run: uv run dbt seed && uv run dbt build --select package:dbt_project_evaluator
+        working-directory: pharma_safety

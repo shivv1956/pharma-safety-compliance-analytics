@@ -1,5 +1,5 @@
 -- One row per reaction listed on a FAERS report (`patient.reaction[]` flattened by dlt).
--- `reaction_term` (MedDRA preferred term) is the text fed to Cortex in the AI layer.
+-- `reaction_term` (MedDRA preferred term) is the term shown in reaction breakdowns.
 
 with reactions as (
 

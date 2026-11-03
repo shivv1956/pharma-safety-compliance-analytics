@@ -110,3 +110,45 @@ models:
     columns:
       - name: recall_number
         data_tests: [unique, not_null]
+
+  - name: int_recall_reason_categories
+    description: One row per recall with a rule-based risk category for its free-text reason (macros/classify_recall_reason.sql).
+    columns:
+      - name: recall_number
+        data_tests: [unique, not_null]
+      - name: recall_reason_category
+        data_tests: [not_null]
+
+unit_tests:
+  - name: test_classify_recall_reason
+    description: The first matching rule wins, so a non-sterile cGMP deviation is a sterility problem.
+    model: int_recall_reason_categories
+    given:
+      - input: ref('stg_recalls')
+        rows:
+          - {recall_number: R1, recall_reason: "Lack of Assurance of Sterility"}
+          - {recall_number: R2, recall_reason: "CGMP Deviations: Non-Sterility found in lots"}
+          - {recall_number: R3, recall_reason: "Presence of foreign substance: small metallic particles"}
+          - {recall_number: R4, recall_reason: "Subpotent Drug"}
+          - {recall_number: R5, recall_reason: "CGMP Deviations: presence of N-Nitroso Atomoxetine Impurity"}
+          - {recall_number: R6, recall_reason: "Failed Dissolution Specifications"}
+          - {recall_number: R7, recall_reason: "Marketed without an approved NDA/ANDA"}
+          - {recall_number: R8, recall_reason: "CGMP Deviations"}
+          - {recall_number: R9, recall_reason: "Something unusual"}
+          - {recall_number: R10, recall_reason: null}
+          - {recall_number: R11, recall_reason: "Defective container: cracked cartridges"}
+          - {recall_number: R12, recall_reason: "Discoloration: yellow spots on tablets"}
+    expect:
+      rows:
+        - {recall_number: R1, recall_reason_category: sterility_microbial}
+        - {recall_number: R2, recall_reason_category: sterility_microbial}
+        - {recall_number: R3, recall_reason_category: foreign_matter}
+        - {recall_number: R4, recall_reason_category: potency}
+        - {recall_number: R5, recall_reason_category: chemical_contamination}
+        - {recall_number: R6, recall_reason_category: quality_stability}
+        - {recall_number: R7, recall_reason_category: unapproved_or_adulterated}
+        - {recall_number: R8, recall_reason_category: cgmp_deviation}
+        - {recall_number: R9, recall_reason_category: other}
+        - {recall_number: R10, recall_reason_category: unspecified}
+        - {recall_number: R11, recall_reason_category: labeling_packaging}
+        - {recall_number: R12, recall_reason_category: quality_stability}

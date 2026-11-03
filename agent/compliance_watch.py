@@ -6,7 +6,7 @@ decide    skip manufacturers that already have an alert for the same year and le
 act       draft a plain-language brief and log it to the compliance_alerts table
 
 The brief is written from a template today. `draft_brief` is the one place to swap in an
-LLM (Snowflake Cortex, or the Claude API) later; the rest of the loop does not change.
+LLM (for example the Claude API) later; the rest of the loop does not change.
 
 Usage (from the repo root):
     uv run python agent/compliance_watch.py --dry-run   # print briefs, write nothing

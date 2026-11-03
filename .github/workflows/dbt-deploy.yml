@@ -1,0 +1,58 @@
+name: dbt deploy
+
+on:
+  schedule:
+    - cron: "0 9 * * *" # daily, after the 06:00 openFDA and monthly CMS ingestion runs
+  push:
+    branches: [main]
+    paths: ["pharma_safety/**", "ci/**"]
+  workflow_dispatch:
+
+concurrency:
+  group: dbt-deploy
+  cancel-in-progress: false
+
+env:
+  DBT_PROFILES_DIR: ${{ github.workspace }}/ci
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+  SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+  DBT_DATABASE: ${{ vars.DBT_PROD_DATABASE || 'PHARMA_PROD' }}
+  DBT_SCHEMA: analytics
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dbt
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run dbt deps
+        working-directory: pharma_safety
+      - name: Source freshness
+        run: uv run dbt source freshness
+        working-directory: pharma_safety
+        continue-on-error: true # stale sources warn; they must not block the build
+      - name: Seed, run, test
+        run: uv run dbt build --exclude "package:dbt_project_evaluator"
+        working-directory: pharma_safety
+      - name: Snapshots
+        run: uv run dbt snapshot
+        working-directory: pharma_safety
+      - name: Docs
+        run: uv run dbt docs generate
+        working-directory: pharma_safety
+      # the next PR's slim CI defers against this manifest
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dbt-prod-state
+          path: |
+            pharma_safety/target/manifest.json
+            pharma_safety/target/run_results.json
+            pharma_safety/target/catalog.json
+          retention-days: 30
