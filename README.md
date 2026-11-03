@@ -79,6 +79,13 @@ new-drug launch ramp-up) are in [docs/agent_review.md](docs/agent_review.md).
   last production manifest, evaluator) and `dbt-deploy.yml` (daily: freshness, build, test,
   snapshot, docs, upload manifest). Ingestion runs in separate workflows.
 
+## Dashboard
+
+![Adverse events](screenshots/01-adverse-events.png)
+![Recall risk heatmap](screenshots/02-recalls-heatmap.png)
+![Recalls by class and latest Class I recalls](screenshots/03-recalls-by-class.png)
+![Payments vs safety](screenshots/04-payments-vs-safety.png)
+
 ## Running it
 
 ```bash

@@ -75,8 +75,9 @@ with tab_events:
         f"""select date_trunc('month', month_start) as month, sum(suspect_reports) as reports,
                    sum(serious_reports) as serious, sum(death_reports) as deaths
             from {MARTS}.mart_manufacturer_monthly
-            where month_start >= '2020-01-01' group by 1 order by 1"""
+            where month_start >= '2020-01-01' group by 1 having sum(suspect_reports) > 0 order by 1"""
     )
+    monthly = monthly.iloc[:-1]  # the latest month is still loading, so it would read as a collapse
     c1, c2 = st.columns([3, 2])
     with c1:
         st.subheader("Monthly reports naming a suspect drug")
