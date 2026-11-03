@@ -1,6 +1,6 @@
 -- One row per drug recall (openFDA enforcement report).
 -- `recalling_firm` is messy and feeds int_manufacturer_resolution;
--- `reason_for_recall` is free text classified by Cortex in the AI layer.
+-- `reason_for_recall` is free text bucketed by macros/classify_recall_reason.sql.
 
 with source as (
 

@@ -44,6 +44,10 @@ models:
 seeds:
   pharma_safety:
     +schema: reference
+  # use this project's exceptions seed instead of the package's empty one
+  dbt_project_evaluator:
+    dbt_project_evaluator_exceptions:
+      +enabled: false
 
 # Thresholds for mart_compliance_risk_signals (the rules behind the compliance agent).
 vars:
@@ -52,3 +56,6 @@ vars:
   min_payments_usd: 1000000         # ignore manufacturers paying less than this in the year
   rising_ratio: 1.2                 # serious reports in H2 vs H1 of the year
   min_h2_serious_reports: 100       # ...and at least this many in H2, so tiny counts do not trigger
+
+  # dbt_project_evaluator: the reporting aggregates in marts use a mart_ prefix
+  marts_prefixes: ['fct_', 'dim_', 'mart_']

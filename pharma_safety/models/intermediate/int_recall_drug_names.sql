@@ -7,13 +7,11 @@ with recall_openfda as (
     select
         recalls.recall_number,
         recalls.product_description,
-        upper(trim(brand.value)) as brand_name,
-        upper(trim(generic.value)) as generic_name
+        names.brand_name,
+        names.generic_name
     from {{ ref('stg_recalls') }} as recalls
-    left join {{ source('openfda', 'recalls__openfda__brand_name') }} as brand
-        on brand._dlt_parent_id = recalls._source_row_id and brand._dlt_list_idx = 0
-    left join {{ source('openfda', 'recalls__openfda__generic_name') }} as generic
-        on generic._dlt_parent_id = recalls._source_row_id and generic._dlt_list_idx = 0
+    left join {{ ref('stg_recall_openfda_names') }} as names
+        on names.recall_source_row_id = recalls._source_row_id
 
 )
 

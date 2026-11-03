@@ -84,6 +84,13 @@ models:
         data_tests:
           - accepted_values:
               arguments: {values: ['Class I', 'Class II', 'Class III']}
+      - name: recall_reason_category
+        description: Rule-based risk bucket for the free-text recall reason.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [sterility_microbial, chemical_contamination, foreign_matter, potency, quality_stability, labeling_packaging, unapproved_or_adulterated, cgmp_deviation, other, unspecified]
 
   - name: fct_adverse_events
     description: >
@@ -115,6 +122,10 @@ models:
     description: >
       How concentrated each manufacturer's physician payments are, per program year.
       top_decile_share is the share going to the top 10% of paid physicians.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [manufacturer_key, program_year]
     columns:
       - name: manufacturer_key
         data_tests:
@@ -127,6 +138,10 @@ models:
 
   - name: mart_manufacturer_monthly
     description: Reporting table for Power BI. One row per manufacturer and month with payments, suspect-drug adverse-event reports and recalls side by side.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [manufacturer_key, month_start]
     columns:
       - name: manufacturer_key
         data_tests:

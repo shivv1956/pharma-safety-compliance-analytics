@@ -9,6 +9,7 @@
 
 -- One row per classified drug recall. A recall whose status changes (ongoing -> terminated)
 -- is reloaded by ingestion, and the merge updates the row.
+-- `recall_reason_category` is rule-based (macros/classify_recall_reason.sql).
 -- Incremental on `_loaded_at`; re-run with --full-refresh after changing the alias seed.
 
 with recalls as (
@@ -37,12 +38,15 @@ select
     recalls.recall_status = 'Ongoing'                           as is_ongoing,
     recalls.voluntary_or_mandated,
     recalls.recall_reason,
+    reasons.recall_reason_category,
     recalls.product_description,
     recalls.distribution_pattern,
     recalls._loaded_at
 from recalls
 left join {{ ref('int_recall_drug_names') }} as recall_names
     on recall_names.recall_number = recalls.recall_number
+left join {{ ref('int_recall_reason_categories') }} as reasons
+    on reasons.recall_number = recalls.recall_number
 left join {{ ref('int_manufacturer_resolution') }} as manufacturers
     on manufacturers.source_system = 'recalls'
     and manufacturers.raw_name = recalls.recalling_firm

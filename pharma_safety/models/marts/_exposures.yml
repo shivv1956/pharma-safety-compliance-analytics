@@ -1,0 +1,25 @@
+version: 2
+
+exposures:
+  - name: pharma_safety_dashboard
+    label: Pharma Compliance & Drug Safety Dashboard
+    type: dashboard
+    maturity: low
+    description: >
+      Power BI report over PHARMA_PROD: adverse-event trends and severity mix, a recall risk
+      heatmap, physician payment concentration against adverse-event and recall rates by
+      manufacturer (the conflict-of-interest view), and a Compliance Alerts page listing the
+      agent's flagged manufacturers and briefs.
+    depends_on:
+      - ref('mart_manufacturer_monthly')
+      - ref('mart_manufacturer_payment_concentration')
+      - ref('mart_compliance_risk_signals')
+      - ref('fct_adverse_events')
+      - ref('fct_recalls')
+      - ref('fct_payments')
+      - ref('dim_manufacturers')
+      - ref('dim_drugs')
+      - ref('dim_date')
+      - source('agent', 'compliance_alerts')
+    owner:
+      name: Shiva Shankar P

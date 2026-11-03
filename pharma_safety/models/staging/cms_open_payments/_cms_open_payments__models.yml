@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_open_payments
+    description: One row per CMS Open Payments general payment to a physician tied to a drug.
+    columns:
+      - name: payment_id
+        description: "`program_year`-`record_id`; record_id is only unique within a program year."
+        data_tests:
+          - unique
+          - not_null
+      - name: payment_amount_usd
+        description: Total payment amount in USD.
+        data_tests:
+          - not_null
+      - name: payment_date
+        description: Date of the payment.
+        data_tests:
+          - not_null
+      - name: manufacturer_name
+        description: Manufacturer as reported by CMS (not yet conformed).
+        data_tests:
+          - not_null
