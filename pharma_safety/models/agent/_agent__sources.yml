@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: agent
+    description: Tables written by the compliance agent (`agent/compliance_watch.py`), not by dbt.
+    database: "{{ target.database }}"
+    schema: agent
+    tables:
+      - name: compliance_alerts
+        description: One row per alert the compliance agent raised - manufacturer, alert level, the signals behind it, the drafted brief, and a review status.

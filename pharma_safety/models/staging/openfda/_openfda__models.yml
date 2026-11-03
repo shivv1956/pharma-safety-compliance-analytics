@@ -76,23 +76,32 @@ models:
         data_tests:
           - not_null
 
-  - name: stg_open_payments
-    description: One row per CMS Open Payments general payment to a physician tied to a drug.
+  - name: stg_adverse_event_drug_manufacturers
+    description: Manufacturer name(s) openFDA matched to each FAERS drug, one row per array element. Position 0 is the primary manufacturer. Large (~170M rows) - filter or aggregate.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [adverse_event_drug_id, manufacturer_position]
     columns:
-      - name: payment_id
-        description: "`program_year`-`record_id`; record_id is only unique within a program year."
-        data_tests:
-          - unique
-          - not_null
-      - name: payment_amount_usd
-        description: Total payment amount in USD.
-        data_tests:
-          - not_null
-      - name: payment_date
-        description: Date of the payment.
-        data_tests:
-          - not_null
+      - name: adverse_event_drug_id
+        data_tests: [not_null]
       - name: manufacturer_name
-        description: Manufacturer as reported by CMS (not yet conformed).
-        data_tests:
-          - not_null
+        data_tests: [not_null]
+
+  - name: stg_adverse_event_drug_generics
+    description: Generic (active ingredient) name(s) openFDA matched to each FAERS drug, one row per array element. Position 0 is used as the drug's generic.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [adverse_event_drug_id, generic_position]
+    columns:
+      - name: adverse_event_drug_id
+        data_tests: [not_null]
+      - name: generic_name
+        data_tests: [not_null]
+
+  - name: stg_recall_openfda_names
+    description: First brand and generic name openFDA matched to each recall (about half of recalls have any). Join to stg_recalls on recall_source_row_id = _source_row_id.
+    columns:
+      - name: recall_source_row_id
+        data_tests: [unique, not_null]

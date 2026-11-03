@@ -64,12 +64,12 @@ inner join events
     on events.adverse_event_report_id = drugs.adverse_event_report_id
 left join reaction_counts
     on reaction_counts.adverse_event_report_id = drugs.adverse_event_report_id
-left join {{ source('openfda', 'adverse_events__patient__drug__openfda__manufacturer_name') }} as openfda_manufacturer
-    on openfda_manufacturer._dlt_parent_id = drugs.adverse_event_drug_id
-    and openfda_manufacturer._dlt_list_idx = 0
+left join {{ ref('stg_adverse_event_drug_manufacturers') }} as openfda_manufacturer
+    on openfda_manufacturer.adverse_event_drug_id = drugs.adverse_event_drug_id
+    and openfda_manufacturer.manufacturer_position = 0
 left join {{ ref('int_manufacturer_resolution') }} as manufacturer_resolution
     on manufacturer_resolution.source_system = 'adverse_events'
-    and manufacturer_resolution.raw_name = trim(openfda_manufacturer.value)
+    and manufacturer_resolution.raw_name = openfda_manufacturer.manufacturer_name
 left join {{ ref('int_drug_resolution') }} as drug_resolution
     on drug_resolution.source_system = 'adverse_events'
     and drug_resolution.raw_name = drugs.drug_name_upper

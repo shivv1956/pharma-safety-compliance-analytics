@@ -7,12 +7,12 @@ with event_pairs as (
 
     select
         drugs.drug_name_upper as raw_name,
-        upper(trim(coalesce(generic.value, drugs.active_substance_name))) as raw_generic,
+        upper(trim(coalesce(generics.generic_name, drugs.active_substance_name))) as raw_generic,
         count(*) as n
     from {{ ref('stg_adverse_event_drugs') }} as drugs
-    left join {{ source('openfda', 'adverse_events__patient__drug__openfda__generic_name') }} as generic
-        on generic._dlt_parent_id = drugs.adverse_event_drug_id
-        and generic._dlt_list_idx = 0
+    left join {{ ref('stg_adverse_event_drug_generics') }} as generics
+        on generics.adverse_event_drug_id = drugs.adverse_event_drug_id
+        and generics.generic_position = 0
     where drugs.drug_name_upper is not null
     group by 1, 2
 
@@ -21,14 +21,13 @@ with event_pairs as (
 recall_pairs as (
 
     select
-        upper(trim(brand.value)) as raw_name,
-        upper(trim(generic.value)) as raw_generic,
+        names.brand_name as raw_name,
+        names.generic_name as raw_generic,
         count(*) as n
     from {{ ref('stg_recalls') }} as recalls
-    inner join {{ source('openfda', 'recalls__openfda__generic_name') }} as generic
-        on generic._dlt_parent_id = recalls._source_row_id and generic._dlt_list_idx = 0
-    inner join {{ source('openfda', 'recalls__openfda__brand_name') }} as brand
-        on brand._dlt_parent_id = recalls._source_row_id and brand._dlt_list_idx = 0
+    inner join {{ ref('stg_recall_openfda_names') }} as names
+        on names.recall_source_row_id = recalls._source_row_id
+    where names.brand_name is not null and names.generic_name is not null
     group by 1, 2
 
 ),

@@ -1,0 +1,17 @@
+version: 2
+
+sources:
+  - name: cms_open_payments
+    description: CMS Open Payments (Sunshine Act) general payments, landed by dlt (`ingestion/payments_bulk_pipeline.py`).
+    database: pharma_source
+    schema: cms_open_payments
+    config:
+      loaded_at_field: "to_timestamp_ntz(_dlt_load_id::number(38,6))"
+    tables:
+      - name: general_payments
+        description: Physician payments tied to a drug, one row per (program_year, record_id).
+        # published once per program year, so the cadence is loose
+        config:
+          freshness:
+            warn_after: {count: 400, period: day}
+            error_after: {count: 730, period: day}

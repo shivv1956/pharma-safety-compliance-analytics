@@ -115,6 +115,10 @@ models:
     description: >
       How concentrated each manufacturer's physician payments are, per program year.
       top_decile_share is the share going to the top 10% of paid physicians.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [manufacturer_key, program_year]
     columns:
       - name: manufacturer_key
         data_tests:
@@ -127,6 +131,10 @@ models:
 
   - name: mart_manufacturer_monthly
     description: Reporting table for Power BI. One row per manufacturer and month with payments, suspect-drug adverse-event reports and recalls side by side.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [manufacturer_key, month_start]
     columns:
       - name: manufacturer_key
         data_tests:

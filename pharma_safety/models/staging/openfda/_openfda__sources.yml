@@ -21,35 +21,17 @@ sources:
         description: One row per drug on a report (child of adverse_events via `_dlt_parent_id`).
       - name: adverse_events__patient__reaction
         description: One row per reaction on a report (child of adverse_events via `_dlt_parent_id`).
+      - name: adverse_events__patient__drug__openfda__manufacturer_name
+        description: Manufacturer name(s) openFDA matched to a drug (value + parent link). ~170M rows; used only through stg_adverse_event_drug_manufacturers.
+      - name: adverse_events__patient__drug__openfda__generic_name
+        description: Generic name(s) openFDA matched to a drug (value + parent link). Used through stg_adverse_event_drug_generics.
       - name: recalls
         description: One row per drug enforcement (recall) record.
         config:
           freshness:
             warn_after: {count: 14, period: day}
             error_after: {count: 45, period: day}
-
-      # Nested openFDA lookups on each drug (value + parent link). Not modelled in
-      # staging: package_ndc alone is >1B rows, so they are aggregated per drug in
-      # intermediate (int_drug_resolution) instead of being exposed here.
       - name: recalls__openfda__brand_name
+        description: Brand name(s) openFDA matched to a recall (value + parent link). Used through stg_recall_openfda_names.
       - name: recalls__openfda__generic_name
-      - name: adverse_events__patient__drug__openfda__manufacturer_name
-      - name: adverse_events__patient__drug__openfda__generic_name
-        description: Generic name(s) openFDA matched to the drug; element 0 is used as the drug's generic.
-      - name: adverse_events__patient__drug__openfda__brand_name
-      - name: adverse_events__patient__drug__openfda__product_ndc
-
-  - name: cms_open_payments
-    description: CMS Open Payments (Sunshine Act) general payments, landed by dlt (`ingestion/payments_bulk_pipeline.py`).
-    database: pharma_source
-    schema: cms_open_payments
-    config:
-      loaded_at_field: "to_timestamp_ntz(_dlt_load_id::number(38,6))"
-    tables:
-      - name: general_payments
-        description: Physician payments tied to a drug, one row per (program_year, record_id).
-        # published once per program year, so the cadence is loose
-        config:
-          freshness:
-            warn_after: {count: 400, period: day}
-            error_after: {count: 730, period: day}
+        description: Generic name(s) openFDA matched to a recall (value + parent link). Used through stg_recall_openfda_names.

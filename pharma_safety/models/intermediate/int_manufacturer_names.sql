@@ -30,10 +30,9 @@ events as (
 
     select
         'adverse_events' as source_system,
-        trim(value) as raw_name,
+        manufacturer_name as raw_name,
         count(*) as row_count
-    from {{ source('openfda', 'adverse_events__patient__drug__openfda__manufacturer_name') }}
-    where nullif(trim(value), '') is not null
+    from {{ ref('stg_adverse_event_drug_manufacturers') }}
     group by 1, 2
 
 ),

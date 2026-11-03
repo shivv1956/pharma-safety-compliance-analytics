@@ -3,6 +3,10 @@ version: 2
 models:
   - name: int_manufacturer_names
     description: Every distinct manufacturer / firm name in payments, recalls and adverse events, with its occurrence count and rule-based comparison key. One row per (source_system, raw_name).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [source_system, raw_name]
     columns:
       - name: source_system
         data_tests:
@@ -24,6 +28,10 @@ models:
       subsidiaries and divisions rolled up to the parent. Feeds `dim_manufacturers`.
       Rows with a `review_candidate_key` are near-matches that were NOT merged and need a
       human decision (confirm by adding a row to the `manufacturer_aliases` seed).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [source_system, raw_name]
     columns:
       - name: manufacturer_key
         description: md5 of `manufacturer_match_key`; the conformed manufacturer id.
@@ -42,6 +50,10 @@ models:
 
   - name: int_drug_names
     description: Every distinct drug name in payments (product slots 1-5), adverse events (as reported) and recalls, with occurrence count and comparison key. One row per (source_system, raw_name).
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [source_system, raw_name]
     columns:
       - name: source_system
         data_tests:
@@ -73,6 +85,10 @@ models:
       Maps every raw drug name in every source to one conformed drug (active ingredient), so
       brand names roll up to their generic. Feeds `dim_drugs`. Conforming at ingredient level
       means brands of one ingredient (Ozempic, Wegovy, Rybelsus) share a `drug_key`.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns: [source_system, raw_name]
     columns:
       - name: drug_key
         description: md5 of `drug_match_key`; the conformed drug id.
@@ -88,3 +104,9 @@ models:
           - accepted_values:
               arguments:
                 values: ['dictionary', 'generic', 'name']
+
+  - name: int_recall_drug_names
+    description: The drug name of each recall - openFDA brand name, else generic name, else the first phrase of the product description. One row per recall; shared by int_drug_names and fct_recalls.
+    columns:
+      - name: recall_number
+        data_tests: [unique, not_null]
